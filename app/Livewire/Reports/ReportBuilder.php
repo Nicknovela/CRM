@@ -20,22 +20,21 @@ class ReportBuilder extends Component
 
     public function exportExcel(): mixed
     {
-        return $this->redirect($this->buildExportUrl('excel'), navigate: false);
+        return $this->redirect($this->buildExportUrl('reports.export.excel'), navigate: false);
     }
 
     public function exportPdf(): mixed
     {
-        return $this->redirect($this->buildExportUrl('pdf'), navigate: false);
+        return $this->redirect($this->buildExportUrl('reports.export.pdf'), navigate: false);
     }
 
-    protected function buildExportUrl(string $format): string
+    protected function buildExportUrl(string $routeName): string
     {
-        return route('reports.export', array_filter([
-            'type'       => $this->reportType,
-            'date_from'  => $this->dateFrom,
-            'date_to'    => $this->dateTo,
-            'vertical_id'=> $this->verticalId ?: null,
-            'format'     => $format,
+        return route($routeName, array_filter([
+            'type'        => $this->reportType,
+            'date_from'   => $this->dateFrom,
+            'date_to'     => $this->dateTo,
+            'vertical_id' => $this->verticalId ?: null,
         ]));
     }
 

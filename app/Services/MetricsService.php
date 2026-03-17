@@ -63,9 +63,14 @@ class MetricsService
         return round($totalDays / $deals->count(), 1);
     }
 
-    public function getFunnelData(int $verticalId): array
+    public function getFunnelData(User $user, ?int $verticalId = null): array
     {
-        $vertical = Vertical::with(['stages' => fn ($q) => $q->ordered()])->findOrFail($verticalId);
+        if (!$verticalId) {
+            $vertical = Vertical::active()->with(['stages' => fn ($q) => $q->ordered()])->first();
+            if (!$vertical) return ['labels' => [], 'values' => [], 'colors' => []];
+        } else {
+            $vertical = Vertical::with(['stages' => fn ($q) => $q->ordered()])->findOrFail($verticalId);
+        }
 
         $labels = [];
         $values = [];
