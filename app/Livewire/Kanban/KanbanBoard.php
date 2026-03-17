@@ -33,7 +33,7 @@ class KanbanBoard extends Component
         return Stage::where('vertical_id', $this->selectedVerticalId)
             ->ordered()
             ->with([
-                'deals' => fn ($q) => Deal::forUser($user, $q)
+                'deals' => fn ($q) => $q->forUser($user)
                     ->with(['client', 'assignedTo'])
                     ->orderByDesc('updated_at'),
             ])

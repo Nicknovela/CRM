@@ -43,11 +43,16 @@ class Deal extends Model
     {
         static::updating(function (Deal $deal) {
             if ($deal->isDirty('stage_id') && auth()->check()) {
-                $oldStageId = $deal->getOriginal('stage_id');
-                $newStageId = $deal->stage_id;
+                // Store pending activity data on the model instance for the 'updated' event
+                $deal->_pendingActivityOldStageId = $deal->getOriginal('stage_id');
+                $deal->_pendingActivityNewStageId = $deal->stage_id;
+            }
+        });
 
-                $oldStage = Stage::find($oldStageId);
-                $newStage = Stage::find($newStageId);
+        static::updated(function (Deal $deal) {
+            if (isset($deal->_pendingActivityOldStageId) && auth()->check()) {
+                $oldStage = Stage::find($deal->_pendingActivityOldStageId);
+                $newStage = Stage::find($deal->_pendingActivityNewStageId);
 
                 $description = sprintf(
                     'Etapa cambiada de "%s" a "%s"',
@@ -55,12 +60,9 @@ class Deal extends Model
                     $newStage?->name ?? 'Desconocida'
                 );
 
-                // Log the stage change after the model saves (via 'updated' event)
-                static::updated(function (Deal $updatedDeal) use ($oldStageId, $newStageId, $description) {
-                    if ($updatedDeal->id === $updatedDeal->id) {
-                        ActivityLogger::log($updatedDeal, 'stage_change', $description, $oldStageId, $newStageId);
-                    }
-                });
+                ActivityLogger::log($deal, 'stage_change', $description, $deal->_pendingActivityOldStageId, $deal->_pendingActivityNewStageId);
+
+                unset($deal->_pendingActivityOldStageId, $deal->_pendingActivityNewStageId);
             }
         });
     }
