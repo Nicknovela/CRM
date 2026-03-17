@@ -10,6 +10,7 @@ new class extends Component
 {
     public string $name = '';
     public string $email = '';
+    public string $timezone = 'America/La_Paz';
 
     /**
      * Mount the component.
@@ -18,6 +19,7 @@ new class extends Component
     {
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
+        $this->timezone = Auth::user()->timezone ?? 'America/La_Paz';
     }
 
     /**
@@ -28,8 +30,9 @@ new class extends Component
         $user = Auth::user();
 
         $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
+            'timezone' => ['required', 'string', 'timezone'],
         ]);
 
         $user->fill($validated);
@@ -104,11 +107,22 @@ new class extends Component
             @endif
         </div>
 
+        <div>
+            <x-input-label for="timezone" :value="__('Zona Horaria')" />
+            <select wire:model="timezone" id="timezone" name="timezone"
+                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                @foreach (\DateTimeZone::listIdentifiers(\DateTimeZone::ALL) as $tz)
+                    <option value="{{ $tz }}" @selected($tz === $this->timezone)>{{ $tz }}</option>
+                @endforeach
+            </select>
+            <x-input-error class="mt-2" :messages="$errors->get('timezone')" />
+        </div>
+
         <div class="flex items-center gap-4">
-            <x-primary-button>{{ __('Save') }}</x-primary-button>
+            <x-primary-button>{{ __('Guardar') }}</x-primary-button>
 
             <x-action-message class="me-3" on="profile-updated">
-                {{ __('Saved.') }}
+                {{ __('Guardado.') }}
             </x-action-message>
         </div>
     </form>
