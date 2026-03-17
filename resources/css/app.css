@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Kanban drag ghost style */
+.sortable-ghost {
+    @apply opacity-40 bg-indigo-50 border-2 border-dashed border-indigo-400 rounded-xl;
+}
+
+.sortable-drag {
+    @apply shadow-2xl rotate-2 opacity-90;
+}
+
+/* Hide Alpine x-cloak elements until Alpine initializes */
+[x-cloak] {
+    display: none !important;
+}
+
+/* Custom scrollbar for kanban horizontal scroll */
+.kanban-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+.kanban-scroll::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 9999px;
+}
+.kanban-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+
+/* Stage color indicator dot */
+.stage-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
