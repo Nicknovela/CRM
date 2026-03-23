@@ -1,0 +1,20 @@
+/* Custom overrides — minimal, Tailwind handles most styles */
+
+/* Smooth scrollbar for kanban columns */
+#kanban-board::-webkit-scrollbar { height: 6px; }
+#kanban-board::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+#kanban-board::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+/* Dragging state */
+.sortable-drag { opacity: 0.4 !important; }
+.sortable-ghost { background: #EEF2FF !important; border: 2px dashed #6366F1 !important; }
+
+/* Sidebar scrollbar */
+aside::-webkit-scrollbar { width: 4px; }
+aside::-webkit-scrollbar-thumb { background: #374151; }
+
+/* Print styles for PDF view */
+@media print {
+    @page { margin: 1.5cm; }
+    body { font-size: 11pt; }
+}
