@@ -19,12 +19,15 @@ class Router
     public function dispatch(string $uri, string $method): void
     {
         $method = strtoupper($method);
-        // Allow POST tunneling via _method
+        // POST tunneling vía _method, limitado a verbos conocidos
         if ($method === 'POST' && isset($_POST['_method'])) {
-            $method = strtoupper($_POST['_method']);
+            $override = strtoupper((string) $_POST['_method']);
+            if (in_array($override, ['PUT', 'PATCH', 'DELETE'], true)) {
+                $method = $override;
+            }
         }
 
-        $uri = '/' . trim(parse_url($uri, PHP_URL_PATH), '/');
+        $uri = '/' . trim(parse_url($uri, PHP_URL_PATH) ?? '/', '/');
         if ($uri === '//') $uri = '/';
 
         $routes = $this->routes[$method] ?? [];
@@ -61,15 +64,17 @@ class Router
         $fullClass = 'Controllers\\' . str_replace('/', '\\', $class);
 
         if (!class_exists($fullClass)) {
+            error_log("Router: controller {$fullClass} not found");
             http_response_code(500);
-            die("Controller {$fullClass} not found.");
+            exit('Internal server error.');
         }
 
         $controller = new $fullClass();
 
         if (!method_exists($controller, $method)) {
+            error_log("Router: method {$method} not found in {$fullClass}");
             http_response_code(500);
-            die("Method {$method} not found in {$fullClass}.");
+            exit('Internal server error.');
         }
 
         $controller->$method(...$params);

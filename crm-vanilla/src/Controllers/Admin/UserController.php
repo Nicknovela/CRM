@@ -30,7 +30,7 @@ class UserController
         if (empty($data['password'])) $errors[] = 'La contraseña es requerida al crear.';
 
         if ($errors) {
-            Session::flash('error', implode('<br>', $errors));
+            Session::flash('error', implode(' ', $errors));
             redirect('/admin/users');
         }
 
@@ -47,7 +47,7 @@ class UserController
         $data   = $this->inputData();
         $errors = $this->validate($data, (int) $id);
         if ($errors) {
-            Session::flash('error', implode('<br>', $errors));
+            Session::flash('error', implode(' ', $errors));
             redirect('/admin/users');
         }
 
@@ -64,8 +64,11 @@ class UserController
             Session::flash('error', 'No puedes eliminar tu propia cuenta.');
             redirect('/admin/users');
         }
-        User::delete((int) $id);
-        Session::flash('success', 'Usuario eliminado.');
+        if (!User::delete((int) $id)) {
+            Session::flash('error', 'No se puede eliminar: el usuario tiene negocios asignados.');
+        } else {
+            Session::flash('success', 'Usuario eliminado.');
+        }
         redirect('/admin/users');
     }
 
@@ -73,9 +76,15 @@ class UserController
     {
         Auth::requireRole('admin');
         verify_csrf();
+        if ((int) $id === Auth::id()) {
+            Session::flash('error', 'No puedes desactivar tu propia cuenta.');
+            redirect('/admin/users');
+        }
         $user = User::find((int) $id);
         if ($user) {
-            User::update((int) $id, array_merge($user, ['is_active' => $user['is_active'] ? 0 : 1]));
+            // Solo se toca is_active: pasar el hash por update() lo re-hashearía
+            // y corrompería la contraseña del usuario.
+            User::setActive((int) $id, !$user['is_active']);
         }
         Session::flash('success', 'Estado actualizado.');
         redirect('/admin/users');
@@ -98,8 +107,20 @@ class UserController
         $errors = [];
         if (empty($data['name']))  $errors[] = 'El nombre es requerido.';
         if (empty($data['email'])) $errors[] = 'El correo es requerido.';
-        if (!in_array($data['role'], ['admin','manager','vendedor','viewer'])) {
+        if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'El correo no es válido.';
+        }
+        if (!in_array($data['role'], ['admin', 'manager', 'vendedor', 'viewer'], true)) {
             $errors[] = 'Rol inválido.';
+        }
+        if (!empty($data['password']) && strlen($data['password']) < 8) {
+            $errors[] = 'La contraseña debe tener al menos 8 caracteres.';
+        }
+        if (!empty($data['email'])) {
+            $existing = User::findByEmail($data['email']);
+            if ($existing && (int) $existing['id'] !== $excludeId) {
+                $errors[] = 'El correo ya está en uso.';
+            }
         }
         return $errors;
     }

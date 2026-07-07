@@ -13,6 +13,12 @@ class Database
     {
         if (self::$instance === null) {
             $cfg = require BASE_PATH . '/config/database.php';
+
+            if ($cfg['database'] === '' || $cfg['username'] === '') {
+                http_response_code(500);
+                exit('Base de datos no configurada. Copia .env.example a .env y completa las credenciales.');
+            }
+
             $dsn = "mysql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['database']};charset={$cfg['charset']}";
             try {
                 self::$instance = new PDO($dsn, $cfg['username'], $cfg['password'], [
@@ -21,8 +27,13 @@ class Database
                     PDO::ATTR_EMULATE_PREPARES   => false,
                 ]);
             } catch (PDOException $e) {
+                // El detalle va al log; el visitante solo ve un mensaje genérico
+                error_log('DB connection failed: ' . $e->getMessage());
                 http_response_code(500);
-                die(json_encode(['error' => 'Database connection failed']) ?: '<h1>Database error</h1>');
+                if (env('APP_DEBUG', 'false') === 'true') {
+                    exit('Error de conexión a la base de datos: ' . $e->getMessage());
+                }
+                exit('Error de conexión a la base de datos. Revisa las credenciales en .env');
             }
         }
         return self::$instance;
@@ -68,5 +79,19 @@ class Database
     public static function lastId(): int
     {
         return (int) self::getInstance()->lastInsertId();
+    }
+
+    public static function transaction(callable $fn): mixed
+    {
+        $pdo = self::getInstance();
+        $pdo->beginTransaction();
+        try {
+            $result = $fn();
+            $pdo->commit();
+            return $result;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 }

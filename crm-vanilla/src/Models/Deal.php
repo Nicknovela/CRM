@@ -3,7 +3,6 @@
 namespace Models;
 
 use Core\Database;
-use Core\Auth;
 
 class Deal
 {
@@ -86,6 +85,7 @@ class Deal
             'probability'         => (int) ($data['probability'] ?? 50),
             'commission_rate'     => !empty($data['commission_rate']) ? (float) $data['commission_rate'] : null,
             'expected_close_date' => $data['expected_close_date'] ?: null,
+            'actual_close_date'   => $data['actual_close_date'] ?? null,
             'notes'               => $data['notes'] ?? '',
             'lost_reason'         => $data['lost_reason'] ?? null,
             'updated_at'          => date('Y-m-d H:i:s'),
@@ -107,7 +107,7 @@ class Deal
         }
         Database::update('deals', $update, 'id = ?', [$id]);
 
-        if ($deal['stage_id'] !== $stageId) {
+        if ((int) $deal['stage_id'] !== $stageId) {
             Activity::log($id, $userId, 'stage_change',
                 'Movido de etapa "' . ($deal['stage_name'] ?? '?') . '" a "' . $stage['name'] . '"',
                 $deal['stage_id'], $stageId
@@ -146,10 +146,13 @@ class Deal
         return Database::fetchAll($sql, $params);
     }
 
-    // Metrics
+    // Métricas del dashboard: 2 consultas en lugar de 5
     public static function metrics(int $verticalId = 0, string $period = '30'): array
     {
-        $since = date('Y-m-d', strtotime("-{$period} days"));
+        // El período viene del query string: se valida como entero acotado
+        $periodDays = max(1, min(3650, (int) $period));
+        $since = date('Y-m-d', strtotime("-{$periodDays} days"));
+
         $params = [];
         $verticalFilter = '';
         if ($verticalId) {
@@ -157,43 +160,32 @@ class Deal
             $params[] = $verticalId;
         }
 
-        $pipeline = Database::fetchOne(
-            "SELECT COALESCE(SUM(d.amount),0) as total FROM deals d
+        $row = Database::fetchOne(
+            "SELECT
+                COALESCE(SUM(CASE WHEN s.is_won = 0 AND s.is_lost = 0 THEN d.amount ELSE 0 END), 0) as pipeline_value,
+                AVG(CASE WHEN s.is_won = 1 THEN d.amount ELSE NULL END) as avg_ticket,
+                AVG(CASE WHEN s.is_won = 1 AND d.actual_close_date IS NOT NULL
+                         THEN DATEDIFF(d.actual_close_date, d.created_at) ELSE NULL END) as avg_close_days
+             FROM deals d
              JOIN stages s ON s.id = d.stage_id
-             WHERE d.deleted_at IS NULL AND s.is_won = 0 AND s.is_lost = 0 $verticalFilter",
+             WHERE d.deleted_at IS NULL $verticalFilter",
             $params
         );
 
-        $conversionParams = $params;
-        $total = Database::fetchOne(
-            "SELECT COUNT(*) as c FROM deals d JOIN stages s ON s.id=d.stage_id
+        $conv = Database::fetchOne(
+            "SELECT COUNT(*) as total,
+                    SUM(CASE WHEN s.is_won = 1 THEN 1 ELSE 0 END) as won
+             FROM deals d
+             JOIN stages s ON s.id = d.stage_id
              WHERE d.deleted_at IS NULL AND d.created_at >= ? $verticalFilter",
             [$since, ...$params]
         );
-        $won = Database::fetchOne(
-            "SELECT COUNT(*) as c FROM deals d JOIN stages s ON s.id=d.stage_id
-             WHERE d.deleted_at IS NULL AND s.is_won = 1 AND d.created_at >= ? $verticalFilter",
-            [$since, ...$params]
-        );
-
-        $avgTicket = Database::fetchOne(
-            "SELECT AVG(d.amount) as avg FROM deals d JOIN stages s ON s.id=d.stage_id
-             WHERE d.deleted_at IS NULL AND s.is_won = 1 $verticalFilter",
-            $params
-        );
-
-        $avgClose = Database::fetchOne(
-            "SELECT AVG(DATEDIFF(actual_close_date, created_at)) as avg FROM deals d
-             JOIN stages s ON s.id=d.stage_id
-             WHERE d.deleted_at IS NULL AND s.is_won = 1 AND actual_close_date IS NOT NULL $verticalFilter",
-            $params
-        );
 
         return [
-            'pipeline_value'   => (float) $pipeline['total'],
-            'conversion_rate'  => $total['c'] > 0 ? round($won['c'] / $total['c'] * 100, 1) : 0,
-            'average_ticket'   => round((float) $avgTicket['avg'], 2),
-            'avg_close_days'   => round((float) $avgClose['avg'], 1),
+            'pipeline_value'  => (float) $row['pipeline_value'],
+            'conversion_rate' => $conv['total'] > 0 ? round($conv['won'] / $conv['total'] * 100, 1) : 0,
+            'average_ticket'  => round((float) $row['avg_ticket'], 2),
+            'avg_close_days'  => round((float) $row['avg_close_days'], 1),
         ];
     }
 
@@ -234,8 +226,10 @@ class Deal
         );
     }
 
-    public static function forReport(array $filters = [], ?int $userId = null, string $role = 'admin'): array
+    public static function forReport(array $filters = [], ?int $userId = null, string $role = 'admin', int $limit = 5000): array
     {
+        // LIMIT siempre presente: en hosting compartido (128M de RAM) cargar
+        // la tabla completa tumba el proceso
         [$where, $params] = self::buildWhere($filters, $userId, $role);
         $sql = "SELECT d.*, c.name as client_name, c.company_name,
                        s.name as stage_name, s.is_won, s.is_lost,
@@ -247,7 +241,9 @@ class Deal
                 JOIN verticals v ON v.id = d.vertical_id
                 LEFT JOIN users u ON u.id = d.assigned_to
                 WHERE d.deleted_at IS NULL " . ($where ? "AND $where" : "") . "
-                ORDER BY d.created_at DESC";
+                ORDER BY d.created_at DESC
+                LIMIT ?";
+        $params[] = $limit;
         return Database::fetchAll($sql, $params);
     }
 

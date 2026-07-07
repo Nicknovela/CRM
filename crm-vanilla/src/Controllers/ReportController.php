@@ -59,12 +59,12 @@ class ReportController
             $status = $d['is_won'] ? 'Ganado' : ($d['is_lost'] ? 'Perdido' : 'En progreso');
             fputcsv($out, [
                 $d['id'],
-                $d['title'],
-                $d['client_name'],
-                $d['company_name'] ?? '',
-                $d['vertical_name'],
-                $d['stage_name'],
-                $d['assigned_name'] ?? '',
+                $this->csvSafe($d['title']),
+                $this->csvSafe($d['client_name']),
+                $this->csvSafe($d['company_name'] ?? ''),
+                $this->csvSafe($d['vertical_name']),
+                $this->csvSafe($d['stage_name']),
+                $this->csvSafe($d['assigned_name'] ?? ''),
                 $d['amount'],
                 $d['currency'],
                 $d['probability'] . '%',
@@ -78,6 +78,18 @@ class ReportController
 
         fclose($out);
         exit;
+    }
+
+    /**
+     * Neutraliza inyección de fórmulas en CSV: Excel ejecuta celdas que
+     * empiezan con =, +, -, @ al abrir el archivo.
+     */
+    private function csvSafe(string $value): string
+    {
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     public function exportPdf(): void

@@ -4,6 +4,9 @@ namespace Core;
 
 class Auth
 {
+    // Cache por petición: evita repetir el SELECT del usuario en cada llamada
+    private static array|false|null $cachedUser = null;
+
     public static function attempt(string $email, string $password): bool
     {
         $user = Database::fetchOne(
@@ -23,10 +26,12 @@ class Auth
         $_SESSION['user_id']   = $user['id'];
         $_SESSION['user_role'] = $user['role'];
         $_SESSION['user_name'] = $user['name'];
+        self::$cachedUser = $user;
     }
 
     public static function logout(): void
     {
+        self::$cachedUser = null;
         $_SESSION = [];
         session_destroy();
     }
@@ -39,7 +44,13 @@ class Auth
     public static function user(): array|false
     {
         if (!self::check()) return false;
-        return Database::fetchOne("SELECT * FROM users WHERE id = ? LIMIT 1", [$_SESSION['user_id']]);
+        if (self::$cachedUser === null) {
+            self::$cachedUser = Database::fetchOne(
+                "SELECT * FROM users WHERE id = ? AND is_active = 1 LIMIT 1",
+                [$_SESSION['user_id']]
+            );
+        }
+        return self::$cachedUser;
     }
 
     public static function id(): ?int

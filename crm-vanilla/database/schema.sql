@@ -94,7 +94,8 @@ CREATE TABLE IF NOT EXISTS `deals` (
   INDEX `idx_deals_vertical`    (`vertical_id`),
   INDEX `idx_deals_assigned`    (`assigned_to`),
   INDEX `idx_deals_deleted`     (`deleted_at`),
-  INDEX `idx_deals_close_date`  (`expected_close_date`)
+  INDEX `idx_deals_close_date`  (`expected_close_date`),
+  INDEX `idx_deals_client_active` (`client_id`, `deleted_at`, `amount`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ─── Activities ──────────────────────────────────────────────────

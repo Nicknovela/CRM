@@ -3,6 +3,7 @@
 namespace Controllers\Admin;
 
 use Core\Auth;
+use Core\Database;
 use Core\Session;
 use Core\View;
 use Models\Vertical;
@@ -14,9 +15,17 @@ class VerticalController
     {
         Auth::requireRole('admin', 'manager');
         $verticals = Vertical::all();
-        foreach ($verticals as &$v) {
-            $v['stages'] = Stage::byVertical($v['id']);
+
+        // Todas las etapas en una consulta (antes: una consulta por vertical)
+        $allStages = Database::fetchAll("SELECT * FROM stages ORDER BY vertical_id, position ASC");
+        $stagesByVertical = [];
+        foreach ($allStages as $stage) {
+            $stagesByVertical[$stage['vertical_id']][] = $stage;
         }
+        foreach ($verticals as &$v) {
+            $v['stages'] = $stagesByVertical[$v['id']] ?? [];
+        }
+        unset($v);
 
         View::render('admin/verticals', [
             'title'     => 'Verticales y Etapas',

@@ -60,19 +60,18 @@ class Vertical
     private static function generateSlug(string $name, ?int $excludeId = null): string
     {
         $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $name));
-        $slug = trim($slug, '-');
+        $slug = trim($slug, '-') ?: 'vertical';
         $base = $slug;
-        $i = 1;
-        while (true) {
-            $sql = "SELECT id FROM verticals WHERE slug = ?";
+        // Bucle acotado: evita un while(true) con una consulta por iteración
+        for ($i = 1; $i <= 100; $i++) {
+            $sql    = "SELECT id FROM verticals WHERE slug = ?";
             $params = [$slug];
             if ($excludeId) {
-                $sql .= " AND id != ?";
+                $sql    .= " AND id != ?";
                 $params[] = $excludeId;
             }
-            $existing = Database::fetchOne($sql, $params);
-            if (!$existing) break;
-            $slug = $base . '-' . $i++;
+            if (!Database::fetchOne($sql, $params)) break;
+            $slug = $base . '-' . $i;
         }
         return $slug;
     }

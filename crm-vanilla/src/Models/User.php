@@ -6,6 +6,9 @@ use Core\Database;
 
 class User
 {
+    // Coste 12 (~250 ms en CPU de hosting compartido): solo se paga al iniciar sesión
+    private const BCRYPT_COST = 12;
+
     public static function all(array $filters = []): array
     {
         $where = [];
@@ -41,7 +44,7 @@ class User
         return Database::insert('users', [
             'name'       => $data['name'],
             'email'      => strtolower($data['email']),
-            'password'   => password_hash($data['password'], PASSWORD_BCRYPT),
+            'password'   => password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => self::BCRYPT_COST]),
             'role'       => $data['role'] ?? 'vendedor',
             'is_active'  => (int) ($data['is_active'] ?? 1),
             'timezone'   => $data['timezone'] ?? 'America/La_Paz',
@@ -61,14 +64,28 @@ class User
             'updated_at' => date('Y-m-d H:i:s'),
         ];
         if (!empty($data['password'])) {
-            $fields['password'] = password_hash($data['password'], PASSWORD_BCRYPT);
+            $fields['password'] = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => self::BCRYPT_COST]);
         }
         Database::update('users', $fields, 'id = ?', [$id]);
     }
 
-    public static function delete(int $id): void
+    public static function setActive(int $id, bool $active): void
     {
+        Database::update('users', [
+            'is_active'  => $active ? 1 : 0,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ], 'id = ?', [$id]);
+    }
+
+    public static function delete(int $id): bool
+    {
+        $count = Database::fetchOne(
+            "SELECT COUNT(*) as c FROM deals WHERE assigned_to = ? AND deleted_at IS NULL",
+            [$id]
+        );
+        if ((int) $count['c'] > 0) return false;
         Database::delete('users', 'id = ?', [$id]);
+        return true;
     }
 
     public static function active(): array

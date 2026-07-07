@@ -149,8 +149,23 @@ class DealController
             redirect("/deals/{$id}/edit");
         }
 
+        // Un solo UPDATE: se calculan aquí los efectos del cambio de etapa
+        // en lugar de escribir dos veces la misma fila (moveToStage + update)
         if ((int)$data['stage_id'] !== (int)$deal['stage_id']) {
-            Deal::moveToStage((int)$id, (int)$data['stage_id'], Auth::id());
+            $newStage = Stage::find((int)$data['stage_id']);
+            if ($newStage) {
+                if ($newStage['is_won']) {
+                    $data['actual_close_date'] = date('Y-m-d');
+                    $data['probability']       = 100;
+                } elseif ($newStage['is_lost']) {
+                    $data['probability'] = 0;
+                }
+                Activity::log(
+                    (int)$id, Auth::id(), 'stage_change',
+                    'Movido de etapa "' . ($deal['stage_name'] ?? '?') . '" a "' . $newStage['name'] . '"',
+                    (int)$deal['stage_id'], (int)$data['stage_id']
+                );
+            }
         }
         Deal::update((int)$id, $data);
         Session::flash('success', 'Negocio actualizado.');

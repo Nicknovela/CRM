@@ -18,10 +18,10 @@
             <h1 class="text-2xl font-bold text-gray-900"><?= e($appName) ?></h1>
         </div>
         <?php if ($msg = \Core\Session::getFlash('error')): ?>
-            <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm"><?= $msg ?></div>
+            <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm"><?= e($msg) ?></div>
         <?php endif; ?>
         <?php if ($msg = \Core\Session::getFlash('success')): ?>
-            <div class="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm"><?= $msg ?></div>
+            <div class="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm"><?= e($msg) ?></div>
         <?php endif; ?>
         <?= $content ?>
     </div>

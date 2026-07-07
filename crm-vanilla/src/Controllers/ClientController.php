@@ -106,8 +106,11 @@ class ClientController
         Auth::requireAuth();
         Auth::requireRole('admin', 'manager');
         verify_csrf();
-        Client::delete((int) $id);
-        Session::flash('success', 'Cliente eliminado.');
+        if (!Client::delete((int) $id)) {
+            Session::flash('error', 'No se puede eliminar: el cliente tiene negocios asociados.');
+        } else {
+            Session::flash('success', 'Cliente eliminado.');
+        }
         redirect('/clients');
     }
 

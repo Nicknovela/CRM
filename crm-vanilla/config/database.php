@@ -1,10 +1,12 @@
 <?php
 
+// Sin credenciales por defecto: si falta el .env la conexión falla con un
+// mensaje claro en vez de intentar entrar como root.
 return [
-    'host'     => getenv('DB_HOST')     ?: '127.0.0.1',
-    'port'     => getenv('DB_PORT')     ?: '3306',
-    'database' => getenv('DB_DATABASE') ?: 'crm_db',
-    'username' => getenv('DB_USERNAME') ?: 'root',
-    'password' => getenv('DB_PASSWORD') ?: '',
+    'host'     => env('DB_HOST', '127.0.0.1'),
+    'port'     => env('DB_PORT', '3306'),
+    'database' => env('DB_DATABASE', ''),
+    'username' => env('DB_USERNAME', ''),
+    'password' => env('DB_PASSWORD', ''),
     'charset'  => 'utf8mb4',
 ];

@@ -3,23 +3,88 @@
 use Core\Auth;
 use Core\Session;
 
+// ─── Entorno ───────────────────────────────────────────────────────
+// En hosting compartido (Hostinger) putenv() suele estar deshabilitado,
+// así que las variables se guardan en $_ENV y se leen con env().
+
+function load_env(string $file): void
+{
+    if (!is_file($file) || !is_readable($file)) return;
+    foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) continue;
+        [$k, $v] = explode('=', $line, 2);
+        $k = trim($k);
+        $v = trim($v);
+        if (strlen($v) > 1 && ($v[0] === '"' || $v[0] === "'") && str_ends_with($v, $v[0])) {
+            $v = substr($v, 1, -1);
+        }
+        $_ENV[$k] = $v;
+    }
+}
+
+function env(string $key, mixed $default = null): mixed
+{
+    if (array_key_exists($key, $_ENV)) return $_ENV[$key];
+    $v = getenv($key);
+    return $v !== false ? $v : $default;
+}
+
+// ─── URLs ──────────────────────────────────────────────────────────
+// base_url() se autodetecta si APP_URL no está definida, y funciona
+// tanto en la raíz del dominio como en un subdirectorio de public_html.
+
+function is_https(): bool
+{
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+        || (int) ($_SERVER['SERVER_PORT'] ?? 0) === 443;
+}
+
+function app_base_path(): string
+{
+    static $dir = null;
+    if ($dir === null) {
+        $dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+    }
+    return $dir; // '' en la raíz, '/subcarpeta' si está en un subdirectorio
+}
+
+function base_url(): string
+{
+    static $base = null;
+    if ($base === null) {
+        $base = rtrim((string) env('APP_URL', ''), '/');
+        if ($base === '') {
+            $scheme = is_https() ? 'https' : 'http';
+            $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $base   = $scheme . '://' . $host . app_base_path();
+        }
+    }
+    return $base;
+}
+
 function redirect(string $path): never
 {
-    $base = rtrim(getenv('APP_URL') ?: '', '/');
-    header('Location: ' . $base . $path);
+    header('Location: ' . base_url() . $path);
     exit;
 }
 
 function url(string $path = ''): string
 {
-    $base = rtrim(getenv('APP_URL') ?: '', '/');
-    return $base . '/' . ltrim($path, '/');
+    return base_url() . '/' . ltrim($path, '/');
 }
 
 function asset(string $path): string
 {
-    return url('assets/' . ltrim($path, '/'));
+    static $version = null;
+    if ($version === null) {
+        $version = (string) env('ASSET_VERSION', '1');
+    }
+    return url('assets/' . ltrim($path, '/')) . '?v=' . rawurlencode($version);
 }
+
+// ─── Escapado / CSRF ───────────────────────────────────────────────
 
 function e(string $value): string
 {
@@ -36,22 +101,28 @@ function csrf_token(): string
 
 function csrf_field(): string
 {
-    return '<input type="hidden" name="_csrf" value="' . csrf_token() . '">';
+    return '<input type="hidden" name="_csrf" value="' . e(csrf_token()) . '">';
 }
 
 function verify_csrf(): void
 {
     $token = $_POST['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', (string) $token)) {
         http_response_code(419);
-        die('CSRF token mismatch.');
+        if (is_ajax()) {
+            header('Content-Type: application/json; charset=utf-8');
+            exit(json_encode(['error' => 'CSRF token mismatch']));
+        }
+        exit('CSRF token mismatch.');
     }
 }
 
 function method_field(string $method): string
 {
-    return '<input type="hidden" name="_method" value="' . strtoupper($method) . '">';
+    return '<input type="hidden" name="_method" value="' . e(strtoupper($method)) . '">';
 }
+
+// ─── Sesión / autenticación ────────────────────────────────────────
 
 function flash(string $key): ?string
 {
@@ -65,7 +136,7 @@ function old(string $key, mixed $default = ''): mixed
 
 function auth(): ?array
 {
-    return Auth::check() ? Auth::user() : null;
+    return Auth::check() ? (Auth::user() ?: null) : null;
 }
 
 function is_role(string ...$roles): bool
@@ -77,6 +148,8 @@ function can(string $role): bool
 {
     return Auth::is($role, 'admin');
 }
+
+// ─── Formato ───────────────────────────────────────────────────────
 
 function format_money(float $amount, string $currency = 'BOB'): string
 {
@@ -140,6 +213,8 @@ function paginate(int $total, int $perPage, int $currentPage, string $baseUrl): 
         'base_url'    => $baseUrl,
     ];
 }
+
+// ─── Request ───────────────────────────────────────────────────────
 
 function request(string $key, mixed $default = null): mixed
 {

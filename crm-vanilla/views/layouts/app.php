@@ -6,8 +6,8 @@
     <title><?= e($title ?? 'CRM') ?> — <?= e($appName) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        const APP_URL = '<?= rtrim(getenv('APP_URL') ?: '', '/') ?>';
-        const CSRF_TOKEN = '<?= csrf_token() ?>';
+        const APP_URL = <?= json_encode(base_url()) ?>;
+        const CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
     </script>
 </head>
 <body class="h-full flex">
@@ -69,14 +69,17 @@
                 <p class="text-xs text-gray-400 capitalize"><?= e($u['role'] ?? '') ?></p>
             </div>
         </div>
-        <a href="<?= url('/logout') ?>"
-           class="flex items-center gap-3 mt-1 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-            </svg>
-            Cerrar sesión
-        </a>
+        <form method="POST" action="<?= url('/logout') ?>">
+            <?= csrf_field() ?>
+            <button type="submit"
+                    class="flex items-center gap-3 mt-1 px-3 py-2 w-full rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Cerrar sesión
+            </button>
+        </form>
     </div>
 </aside>
 
@@ -90,7 +93,7 @@
                 <div class="flash-msg px-4 py-2 rounded-lg bg-green-100 text-green-800 text-sm"><?= e($msg) ?></div>
             <?php endif; ?>
             <?php if ($msg = \Core\Session::getFlash('error')): ?>
-                <div class="flash-msg px-4 py-2 rounded-lg bg-red-100 text-red-800 text-sm"><?= $msg ?></div>
+                <div class="flash-msg px-4 py-2 rounded-lg bg-red-100 text-red-800 text-sm"><?= e($msg) ?></div>
             <?php endif; ?>
         </div>
     </header>

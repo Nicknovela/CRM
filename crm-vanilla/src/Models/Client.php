@@ -77,9 +77,16 @@ class Client
         ], 'id = ?', [$id]);
     }
 
-    public static function delete(int $id): void
+    public static function delete(int $id): bool
     {
+        // No se borra un cliente con negocios: dejaría deals huérfanos
+        $count = Database::fetchOne(
+            "SELECT COUNT(*) as c FROM deals WHERE client_id = ?",
+            [$id]
+        );
+        if ((int) $count['c'] > 0) return false;
         Database::delete('clients', 'id = ?', [$id]);
+        return true;
     }
 
     public static function deals(int $clientId): array
@@ -99,6 +106,6 @@ class Client
 
     public static function forSelect(): array
     {
-        return Database::fetchAll("SELECT id, name, company_name FROM clients ORDER BY name");
+        return Database::fetchAll("SELECT id, name, company_name FROM clients ORDER BY name LIMIT 500");
     }
 }

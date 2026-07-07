@@ -52,9 +52,12 @@ class Stage
 
     public static function reorder(array $ids): void
     {
-        foreach ($ids as $pos => $id) {
-            Database::update('stages', ['position' => $pos + 1], 'id = ?', [(int)$id]);
-        }
+        // Una transacción: todo o nada, y mucho más rápido que N commits sueltos
+        Database::transaction(function () use ($ids) {
+            foreach ($ids as $pos => $id) {
+                Database::update('stages', ['position' => $pos + 1], 'id = ?', [(int) $id]);
+            }
+        });
     }
 
     public static function delete(int $id): bool

@@ -1,16 +1,34 @@
 Options -Indexes
 
-RewriteEngine On
-RewriteBase /
+# Sin RewriteBase: las reglas funcionan igual en la raíz del dominio
+# o en un subdirectorio de public_html (típico en Hostinger).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
 
-# Block direct access to sensitive dirs
-RewriteRule ^(config|src|views|database)/ - [F,L]
+    # Bloquear .env y cualquier archivo/carpeta oculta (.git, etc.)
+    RewriteRule (^|/)\.(?!well-known) - [F]
 
-# Allow assets through
-RewriteCond %{REQUEST_URI} ^/assets/ [NC]
-RewriteRule ^ - [L]
+    # Bloquear acceso directo a directorios sensibles
+    RewriteRule ^(config|src|views|database|storage)(/|$) - [F]
 
-# Route everything else to index.php
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.php [QSA,L]
+    # Front controller: todo lo que no sea un archivo o carpeta real va a index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Defensa extra por si mod_rewrite está desactivado
+<Files ".env">
+    Require all denied
+</Files>
+
+# Caché de assets estáticos (LiteSpeed en Hostinger lo soporta)
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 year"
+</IfModule>
