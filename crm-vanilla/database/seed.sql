@@ -5,9 +5,9 @@ SET NAMES utf8mb4;
 
 -- ─── Users ───────────────────────────────────────────────────────
 INSERT INTO `users` (`name`, `email`, `password`, `role`, `is_active`, `timezone`) VALUES
-('Administrador',    'admin@crm.test',    '$2y$12$LhBw1yepGHQv3UHt0gFTIO2MVlXVoqPLJE.fxHH1aN.U1gBFH5SaK', 'admin',    1, 'America/La_Paz'),
-('Gerente Comercial','gerente@crm.test',  '$2y$12$LhBw1yepGHQv3UHt0gFTIO2MVlXVoqPLJE.fxHH1aN.U1gBFH5SaK', 'manager',  1, 'America/La_Paz'),
-('Carlos Méndez',    'vendedor@crm.test', '$2y$12$LhBw1yepGHQv3UHt0gFTIO2MVlXVoqPLJE.fxHH1aN.U1gBFH5SaK', 'vendedor', 1, 'America/La_Paz');
+('Administrador',    'admin@crm.test',    '$2y$12$v2g8L5r/mfrTLaKWr8cRCenudfyVYb7ZQmIMpcimEoH./wbzo.382', 'admin',    1, 'America/La_Paz'),
+('Gerente Comercial','gerente@crm.test',  '$2y$12$v2g8L5r/mfrTLaKWr8cRCenudfyVYb7ZQmIMpcimEoH./wbzo.382', 'manager',  1, 'America/La_Paz'),
+('Carlos Méndez',    'vendedor@crm.test', '$2y$12$v2g8L5r/mfrTLaKWr8cRCenudfyVYb7ZQmIMpcimEoH./wbzo.382', 'vendedor', 1, 'America/La_Paz');
 
 -- ─── Verticals ───────────────────────────────────────────────────
 INSERT INTO `verticals` (`name`, `slug`, `description`, `color`, `is_active`, `track_commission`) VALUES
